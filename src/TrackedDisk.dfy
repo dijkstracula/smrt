@@ -1,6 +1,6 @@
 include "Types.dfy"
 
-// Models an abstract block-addressible device that understands how the track geometry
+// Models an abstract track-addressible device that understands how the track geometry
 // of the physical device is affected by reads and writes to the device.
 //
 // Things this has to do:
@@ -10,9 +10,7 @@ include "Types.dfy"
 // This may either be too coarse (presumably the device could do it at the block level?
 // or too fine (multiple tracks ought to be invalidated?)
 //
-// TODO: this might be too low-level for the course project, but I think there's value
-// in keeping it around.
-module TrackedStorage {
+module TrackedDisk {
     import opened NativeTypes
     import opened Types
 
@@ -68,8 +66,7 @@ module TrackedStorage {
 
     predicate Next(c: Constants, state: State, state': State)
     {
-        exists step :: ValidStep(c, step) 
-                    && NextStep(c, step, state, state')
+        exists step :: ValidStep(c, step) && NextStep(c, step, state, state')
     }
 
 }
