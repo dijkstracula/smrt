@@ -1,5 +1,54 @@
 include "Types.dfy"
 
+// A read-anywhere, append-only datatype.
+module Zone {
+    import opened NativeTypes
+
+    datatype Constants = Constants(
+        block_sz: usize
+    )
+
+    class Variables {
+        var write_ptr: usize
+        var bytes: seq<uint8>
+
+        function Valid() : bool 
+            reads this;
+        {
+            0 < |bytes| < 0x1_0000_0000_0000_0000
+            && 0 <= write_ptr as int < |bytes|
+        }
+
+        constructor Init(sz: usize)
+            requires sz > 0
+            ensures Valid()
+        {
+            this.write_ptr := 0;
+            this.bytes := seq(sz, i => 0);
+        }
+
+        function method Read(offset: int, len: int) : seq<uint8>
+            reads this
+            requires offset >= 0
+            requires len > 0
+            requires offset + len < |bytes|
+        {
+            bytes[offset .. offset + len]
+        }
+
+        method Write(data: seq<uint8>)
+            modifies this
+            requires Valid()
+            requires write_ptr as int + |data| < |bytes|
+            ensures old(|bytes|) == |bytes|
+            ensures Valid()
+        {
+            bytes := bytes[..write_ptr] + data + bytes[(write_ptr as int + |data|)..];
+            write_ptr := write_ptr + |data| as usize;
+        }
+    }
+}
+
 module ZonedDisk /* refines TrackedDisk */ {
     import opened NativeTypes
     import opened Types
