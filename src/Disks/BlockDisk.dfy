@@ -1,4 +1,5 @@
 include "../Types.dfy"
+include "../Disk.dfy"
 
 module Block {
     import opened NativeTypes
@@ -19,7 +20,7 @@ module Block {
     }
 }
 
-module BlockDisk {
+module BlockDisk refines Disk {
     import opened NativeTypes
     import opened Types
     import opened Block
@@ -31,6 +32,11 @@ module BlockDisk {
         // XXX: should this be seq<option<Block>> ?
         blocks: seq<Block.State>
     )
+    
+    function method Init(c: Constants) : State 
+    {
+        State(seq(c.n_blocks, i => Block.Init()))
+    }
 
     predicate ConstantsValid(c: Constants) {
         && c.n_blocks > 0
@@ -43,34 +49,9 @@ module BlockDisk {
         && forall i :: 0 <= i < |s.blocks| ==> Block.Valid(s.blocks[i])
     }
 
-    function method Init(c: Constants) : State 
-        requires ConstantsValid(c)
-        ensures Valid(c, Init(c))
-    {
-        State(seq(c.n_blocks, i => Block.Init()))
-    }
-
-    function method Read(c: Constants, s: State, block_id: int) : Block.State
-        requires Valid(c, s)
-        requires 0 <= block_id < |s.blocks|
-        ensures Block.Valid(Read(c, s, block_id))
-    {
-        s.blocks[block_id]
-    }
-
-    predicate Write(c: Constants, s: State, s': State, block_id: int, val: Block.State)
-        requires Valid(c, s)
-    {
-        && 0 <= block_id < |s.blocks|
-        && Block.Valid(val)
-        && s'.blocks == s.blocks[block_id := val]
-    }
-
     // Invariant preservation
 
     lemma InitImpliesValid(c: Constants, s: State) 
-        requires ConstantsValid(c)
-        requires s == Init(c)
         ensures Valid(c, s)
     {}
 
@@ -97,25 +78,43 @@ module BlockDisk {
     | ReadBlock(id: int, val: Block.State)
     | WriteBlock(b: int, val: Block.State)
 
-    predicate ValidStep(c: Constants, s: State, s': State, step: Step)
+    predicate StepImpliesValid(c: Constants, s: State, s': State, step: Step)
     {
         match step {
             case ReadBlock(off, val) => && 0 <= off as int < |s.blocks| 
                                       && Valid(c, s)
-                                      && Valid(c, s')
                                       && s == s'
                                       && s.blocks[off] == val
+                                      && Valid(c, s')
             case WriteBlock(off, val) => && 0 <= off as int < |s.blocks|
                                        && Valid(c, s)
-                                       && Valid(c, s')
                                        && Block.Valid(val)
                                        && s'.blocks == s.blocks[off := val]
+                                       && Valid(c, s')
         }       
     }
 
     predicate Next(c: Constants, s: State, s': State)
     {
-        exists step :: ValidStep(c, s, s', step)
+        exists step :: StepImpliesValid(c, s, s', step)
+    }
+
+    //
+
+    function method Read(c: Constants, s: State, block_id: int) : Block.State
+        requires Valid(c, s)
+        requires 0 <= block_id < |s.blocks|
+        ensures Block.Valid(Read(c, s, block_id))
+    {
+        s.blocks[block_id]
+    }
+
+    predicate Write(c: Constants, s: State, s': State, block_id: int, val: Block.State)
+        requires Valid(c, s)
+    {
+        && 0 <= block_id < |s.blocks|
+        && Block.Valid(val)
+        && s'.blocks == s.blocks[block_id := val]
     }
 
 }
