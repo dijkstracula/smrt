@@ -1,1 +1,2 @@
-include "DiskGeometry.dfy"
+include "Disks/BlockDisk.dfy"
+include "Refinements/BlockDiskRefinesItself.dfy"

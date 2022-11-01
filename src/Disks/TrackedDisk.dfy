@@ -1,4 +1,4 @@
-include "Types.dfy"
+include "../Types.dfy"
 
 // Models an abstract track-addressible device that understands how the track geometry
 // of the physical device is affected by reads and writes to the device.
