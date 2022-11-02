@@ -61,16 +61,14 @@ module BlockDisk refines Disk {
         requires 0 <= block_id as int < |s.blocks|
         requires Read(c, s, block_id) == val
         ensures Valid(c, s')
-    {
-    }
+    {}
     
     lemma WritePreservesValid(c: Constants, s: State, s': State, block_id: int, val: Block.State)
         requires Valid(c, s)
         requires 0 <= block_id as int < |s.blocks|
         requires Write(c, s, s', block_id, val)
         ensures Valid(c, s')
-    {
-    }
+    {}
 
     // Step relations
 

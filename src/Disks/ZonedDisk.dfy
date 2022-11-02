@@ -6,59 +6,67 @@ module Zone {
     import opened NativeTypes
     import Block
 
-    const block_sz := 1024;
-    
-    class State
+    datatype State = State(
+        write_ptr: uint64,
+        blocks: seq<Block.State>
+    )
+
+    function method Init(blocks: uint64) : State
+        requires 0 < blocks as int < UINT64_MAX
+        ensures Valid(Init(blocks))
     {
-        var write_ptr: usize
-        var blocks: seq<Block.State>
+        State(
+            write_ptr := 0,
+            blocks := seq(blocks, i => Block.Init()))
+    }
 
-        function Valid() : bool 
-            reads this
-        {
-            0 < |blocks| < USIZE_MAX
-            && 0 <= write_ptr as int < |blocks|
-        }
+    function Valid(s: State) : bool 
+    {
+        && 0 < |s.blocks| < UINT64_MAX
+        && 0 <= s.write_ptr as int <= |s.blocks|
+        && forall i :: 0 <= i < s.write_ptr ==> Block.Valid(s.blocks[i])
+    }
 
-        constructor New(blocks: usize)
-            // XXX: email Robin about why we have to bound USIZE_MAX given the argument to Init
-            requires 0 < blocks as int < USIZE_MAX
-            ensures Valid()
-        {
-            this.write_ptr := 0;
-            this.blocks := seq(blocks, i => Block.Init());
-        }
+    function method Read(s: State, block_offset: uint64) : Block.State
+        requires Valid(s)
+        requires 0 <= block_offset < s.write_ptr
+        ensures Valid(s)
+    {
+        s.blocks[block_offset]
+    }
 
-        function method Read(offset: usize) : Block.State
-            reads this
-            requires Valid()
-            requires 0 <= offset < write_ptr
-        {
-            blocks[offset]
-        }
+    predicate Write(s: State, s': State, b: Block.State)
+        requires Valid(s)
+        requires Valid(s')
+        requires Block.Valid(b)
+    {
+        && !Full(s)
+        && !Empty(s')
+        && s.write_ptr + 1 == s'.write_ptr 
+        && s.blocks[0..s.write_ptr] == s'.blocks[0..s.write_ptr]
+        && s'.blocks[s.write_ptr] == b
+    }
 
-        method Write(data: Block.State)
-            modifies this
-            requires Valid()
-            requires |data| % block_sz == 0
-            requires write_ptr as int < |blocks| - 1
-            ensures Valid()
-        {
-            blocks := blocks[write_ptr := data];
-            write_ptr := write_ptr + 1;
-        }
+    predicate Reset(s: State)
+        requires Valid(s)
+    {
+        s.write_ptr == 0
+    }
 
-        method Reset()
-            modifies this
-            requires Valid()
-            ensures Valid()
-        {
-            write_ptr := 0;
-        }
+    predicate Empty(s: State)
+        requires Valid(s)
+    {
+        s.write_ptr > 0
+    }
+
+    predicate Full(s: State)
+        requires Valid(s)
+    {
+        s.write_ptr as int < |s.blocks|
     }
 }
 
-module ZonedDisk /* refines TrackedDisk */ {
+module ZonedDisk refines Disk {
     import opened NativeTypes
     import opened Types
     import opened Zone
@@ -68,12 +76,28 @@ module ZonedDisk /* refines TrackedDisk */ {
         zone_map: seq<(uint64, uint64)> // [b, e)
     )
 
-    // TODO: for crash consistency, we ought to distinguish between persistent state
-    // and in-memory state (and show, presuamably, that at all steps the latter can be
-    // reconstructed from the former?)
     datatype State = State(
         zones: seq<Zone.State>
     )
+
+    function method Init(c: Constants) : State
+    {
+        State.State(
+            seq(|c.zone_map|, i => Zone.Init(c.zone_map[i].1 - c.zone_map[i].0))
+        )
+    }
+
+    predicate ConstantsValid(c: Constants)
+    {
+        zone_map_well_formed(c.n_blocks, c.zone_map)
+    }
+
+    predicate Valid(c: Constants, s: State) 
+    {
+        && ConstantsValid(c)
+        && |s.zones| == |c.zone_map|
+    }
+
 
     predicate zone_map_well_formed(n_blocks: uint64, zone_map: seq<(uint64, uint64)>)
     {
@@ -82,10 +106,7 @@ module ZonedDisk /* refines TrackedDisk */ {
         && zone_map[0].0 == 0
         && zone_map[|zone_map| - 1].1 == n_blocks
         && forall i :: 0 <= i < |zone_map| ==> zone_map[i].0 < zone_map[i].1
-        && forall i :: 0 <= i < |zone_map| - 1 ==> zone_map[i].1 == zone_map[i+1].0
-        // TODO: email Robin about triggering with the following uncommented...
-        //&& forall i :: 0 <= i < |zone_map| ==> forall j :: 0 <= j < i ==> zone_map[j].0 < zone_map[i].0
-        //&& forall i :: 0 <= i < |zone_map| ==> forall j :: 0 <= j < i ==> zone_map[j].1 < zone_map[i].1
+        && forall i :: 0 <  i < |zone_map| ==> zone_map[i-1].1 == zone_map[i].0
     }
 
     method resolve_lba(c: Constants, lba: uint64) returns (zone: int, offset: uint64) 
@@ -111,13 +132,6 @@ module ZonedDisk /* refines TrackedDisk */ {
             }
             i := i + 1;
         }
-    }
-
-    predicate Valid(c: Constants, s: State) 
-        requires zone_map_well_formed(c.n_blocks, c.zone_map)
-        reads s.zones
-    {
-        |s.zones| == |c.zone_map|
     }
 
     datatype Step =

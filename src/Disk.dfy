@@ -32,4 +32,12 @@ abstract module Disk {
 
     /* Whatever our step relation is, we need to maintain validity. */
     predicate StepImpliesValid(c: Constants, s: State, s': State, step: Step)
+
+    // XXX: I'd like to have a concrete Next() predicate at this point, stating
+    // exists step :: StepImpliesValid(c, s, s', step); but, I'm getting an
+    // error saying "an exists in a predicate def'n is not allowed to depend on
+    // the set of allcoated references, but values of step may contain
+    // references".  This isn't a problem when StepImpliesValid is concretised
+    // (i.e. in BlockDisk).  It'd be nice to figure out why, because I don't think
+    // it's realistic to make Step a !new type.
 }
