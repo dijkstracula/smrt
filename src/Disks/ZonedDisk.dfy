@@ -22,7 +22,7 @@ module Zone {
 
     function Valid(s: State) : bool 
     {
-        && 0 < |s.blocks| < UINT64_MAX
+        && 0 < |s.blocks|
         && 0 <= s.write_ptr as int <= |s.blocks|
         && forall i :: 0 <= i < s.write_ptr ==> Block.Valid(s.blocks[i])
     }
@@ -42,7 +42,7 @@ module Zone {
     {
         && !Full(s)
         && !Empty(s')
-        && s.write_ptr + 1 == s'.write_ptr 
+        && s.write_ptr == s'.write_ptr - 1
         && s.blocks[0..s.write_ptr] == s'.blocks[0..s.write_ptr]
         && s'.blocks[s.write_ptr] == b
     }
@@ -56,17 +56,17 @@ module Zone {
     predicate Empty(s: State)
         requires Valid(s)
     {
-        s.write_ptr > 0
+        s.write_ptr == 0
     }
 
     predicate Full(s: State)
         requires Valid(s)
     {
-        s.write_ptr as int < |s.blocks|
+        s.write_ptr as int == |s.blocks|
     }
 }
 
-module ZonedDisk refines Disk {
+module ZonedDisk /* refines Disk */ {
     import opened NativeTypes
     import opened Types
     import opened Zone
@@ -81,6 +81,7 @@ module ZonedDisk refines Disk {
     )
 
     function method Init(c: Constants) : State
+        requires ConstantsValid(c)
     {
         State.State(
             seq(|c.zone_map|, i => Zone.Init(c.zone_map[i].1 - c.zone_map[i].0))
@@ -99,14 +100,22 @@ module ZonedDisk refines Disk {
     }
 
 
+    // Defining a function just to have something for Z3 to trigger on.
+    predicate contiguous_interval(z: seq<(uint64, uint64)>, i: int)
+        requires 0 < i < |z|
+    {
+        && z[i-1].1 == z[i].0
+    }
+
     predicate zone_map_well_formed(n_blocks: uint64, zone_map: seq<(uint64, uint64)>)
     {
         n_blocks > 0
         && 0 < |zone_map| as int
         && zone_map[0].0 == 0
         && zone_map[|zone_map| - 1].1 == n_blocks
-        && forall i :: 0 <= i < |zone_map| ==> zone_map[i].0 < zone_map[i].1
-        && forall i :: 0 <  i < |zone_map| ==> zone_map[i-1].1 == zone_map[i].0
+        && forall i :: 0 <= i < |zone_map| ==> 0 < zone_map[i].1 < zone_map[i].1
+        && forall i :: 0 <= i < |zone_map| ==> 0 < (zone_map[i].1 - zone_map[i].0) < UINT64_MAX as uint64
+        && forall i :: 0 <  i < |zone_map| ==> contiguous_interval(zone_map, i)
     }
 
     method resolve_lba(c: Constants, lba: uint64) returns (zone: int, offset: uint64) 
@@ -115,15 +124,15 @@ module ZonedDisk refines Disk {
 
         ensures 0 <= zone < |c.zone_map|
         ensures 0 <= c.zone_map[zone].0 < c.n_blocks
-        ensures 0 <= offset < c.zone_map[zone].1
-        ensures c.zone_map[zone].0 <= lba;
+        ensures c.zone_map[zone].0 <= lba < c.zone_map[zone].1;
         ensures offset == lba - c.zone_map[zone].0;
     {
         var i := 0;
+
         while i < |c.zone_map|
-            invariant 0 <= i < |c.zone_map| 
-            invariant i > 0 ==> lba >= c.zone_map[i-1].0
+            invariant 0 <= i <= |c.zone_map| 
             invariant i > 0 ==> lba >= c.zone_map[i-1].1
+            invariant i > 0 ==> contiguous_interval(c.zone_map, i)
         {
             if lba >= c.zone_map[i].0 && lba < c.zone_map[i].1 {
                 zone := i;
