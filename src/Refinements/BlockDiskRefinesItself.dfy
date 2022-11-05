@@ -27,14 +27,14 @@ lemma RefinesInit(c: C.Constants)
 {}
 
 lemma RefinesReadStep(c: C.Constants, s: C.State, s': C.State, block_id: int, val: Block.State)
-    requires C.StepImpliesValid(c, s, s', C.ReadBlock(block_id, val))
+    requires C.NextStep(c, s, s', C.ReadBlock(block_id, val))
     requires C.Read(c, s, block_id) == val
     ensures A.Read(IC(c), I(c, s), block_id) == val
 {
 }
 
 lemma RefinesWriteStep(c: C.Constants, s: C.State, s': C.State, block_id: int, val: Block.State)
-    requires C.StepImpliesValid(c, s, s', C.WriteBlock(block_id, val))
+    requires C.NextStep(c, s, s', C.WriteBlock(block_id, val))
     requires C.Write(c, s, s', block_id, val)
     ensures A.Write(IC(c), I(c, s), I(c, s'), block_id, val)
 {
@@ -42,7 +42,7 @@ lemma RefinesWriteStep(c: C.Constants, s: C.State, s': C.State, block_id: int, v
 
 lemma RefinesStep(c: C.Constants, s: C.State, s': C.State, step: C.Step)
     requires C.ConstantsValid(c)
-    requires C.StepImpliesValid(c, s, s', step)
+    requires C.NextStep(c, s, s', step)
     ensures A.Next(IC(c), I(c, s), I(c, s'))
 {
     match step {

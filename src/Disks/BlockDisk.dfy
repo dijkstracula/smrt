@@ -38,6 +38,26 @@ module BlockDisk refines Disk {
         State(seq(c.n_blocks, i => Block.Init()))
     }
 
+    function method Read(c: Constants, s: State, block_id: int) : Block.State
+        requires Valid(c, s)
+        requires 0 <= block_id < |s.blocks|
+        ensures Block.Valid(Read(c, s, block_id))
+    {
+        s.blocks[block_id]
+    }
+
+    predicate Write(c: Constants, s: State, s': State, block_id: int, val: Block.State)
+        requires Valid(c, s)
+        ensures Valid(c, s)
+    {
+        && 0 <= block_id < |s.blocks|
+        && Block.Valid(val)
+        && s'.blocks == s.blocks[block_id := val]
+    }
+
+    // Invariant preservation
+
+
     predicate ConstantsValid(c: Constants) {
         && c.n_blocks > 0
     }
@@ -49,70 +69,62 @@ module BlockDisk refines Disk {
         && forall i :: 0 <= i < |s.blocks| ==> Block.Valid(s.blocks[i])
     }
 
-    // Invariant preservation
-
-    lemma InitImpliesValid(c: Constants, s: State) 
-        ensures Valid(c, s)
-    {}
-
-    lemma ReadPreservesValid(c: Constants, s: State, s': State, block_id: int, val: Block.State)
-        requires Valid(c, s)
-        requires s == s'
-        requires 0 <= block_id as int < |s.blocks|
-        requires Read(c, s, block_id) == val
-        ensures Valid(c, s')
-    {}
-    
-    lemma WritePreservesValid(c: Constants, s: State, s': State, block_id: int, val: Block.State)
-        requires Valid(c, s)
-        requires 0 <= block_id as int < |s.blocks|
-        requires Write(c, s, s', block_id, val)
-        ensures Valid(c, s')
-    {}
 
     // Step relations
 
     datatype Step =
-    | ReadBlock(id: int, val: Block.State)
-    | WriteBlock(b: int, val: Block.State)
+    | ReadBlock(lba: int, val: Block.State)
+    | WriteBlock(lba: int, val: Block.State)
 
-    predicate StepImpliesValid(c: Constants, s: State, s': State, step: Step)
+    predicate NextStep(c: Constants, s: State, s': State, step: Step)
     {
-        match step {
-            case ReadBlock(off, val) => && 0 <= off as int < |s.blocks| 
-                                      && Valid(c, s)
-                                      && s == s'
-                                      && s.blocks[off] == val
-                                      && Valid(c, s')
-            case WriteBlock(off, val) => && 0 <= off as int < |s.blocks|
-                                       && Valid(c, s)
-                                       && Block.Valid(val)
-                                       && s'.blocks == s.blocks[off := val]
-                                       && Valid(c, s')
+        Valid(c, s) 
+        && match step {
+            case ReadBlock(off, val) => 
+                && 0 <= off < |s.blocks| as int
+                && Read(c, s, off) == val
+                && s == s'
+            case WriteBlock(off, val) => 
+                && 0 <= off < |s.blocks| as int
+                && Write(c, s, s', off, val)
         }       
     }
 
     predicate Next(c: Constants, s: State, s': State)
     {
-        exists step :: StepImpliesValid(c, s, s', step)
+        exists step :: NextStep(c, s, s', step)
     }
 
-    //
+    // Invariant nonsense
+    
+    lemma InitImpliesValid(c: Constants) 
+    {}
 
-    function method Read(c: Constants, s: State, block_id: int) : Block.State
+    lemma NextPreservesValid(c: Constants, s: State, s': State)
         requires Valid(c, s)
-        requires 0 <= block_id < |s.blocks|
-        ensures Block.Valid(Read(c, s, block_id))
+        requires Next(c, s, s')
+        ensures Valid(c, s')
     {
-        s.blocks[block_id]
+        var step :| NextStep(c, s, s', step);
+        match step {
+            case ReadBlock(off, val) => {}
+            case WriteBlock(off, val) => {
+                assert |s.blocks| == |s'.blocks|;
+            }
+        }
     }
 
-    predicate Write(c: Constants, s: State, s': State, block_id: int, val: Block.State)
+    lemma ReadPreservesValid(c: Constants, s: State, s': State, lba: int, val: Block.State)
         requires Valid(c, s)
-    {
-        && 0 <= block_id < |s.blocks|
-        && Block.Valid(val)
-        && s'.blocks == s.blocks[block_id := val]
-    }
-
+        requires 0 <= lba < c.n_blocks as int
+        requires s == s'
+        requires Read(c, s, lba) == val
+        ensures Valid(c, s')
+    {}
+    
+    lemma WritePreservesValid(c: Constants, s: State, s': State, lba: int, val: Block.State)
+        requires Valid(c, s)
+        requires Write(c, s, s', lba, val);
+        ensures Valid(c, s')
+    {}
 }

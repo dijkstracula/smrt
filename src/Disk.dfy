@@ -25,16 +25,18 @@ abstract module Disk {
     predicate Valid(c: Constants, s: State)
 
     /* A disk must begin in a valid state. */
-    lemma InitImpliesValid(c: Constants, s: State) 
+    lemma InitImpliesValid(c: Constants) 
         requires ConstantsValid(c)
-        requires s == Init(c)
-        ensures Valid(c, s)
+        ensures Valid(c, Init(c))
 
     /* Whatever our step relation is, we need to maintain validity. */
-    predicate StepImpliesValid(c: Constants, s: State, s': State, step: Step)
+    /* XXX: This vs a NextStep()-esque predicate? */
+    lemma StepImpliesValid(c: Constants, s: State, s': State, step: Step)
+        requires Valid(c, s)
+        ensures Valid(c, s')
 
     // XXX: I'd like to have a concrete Next() predicate at this point, stating
-    // exists step :: StepImpliesValid(c, s, s', step); but, I'm getting an
+    // exists step :: NextStep(c, s, s', step); but, I'm getting an
     // error saying "an exists in a predicate def'n is not allowed to depend on
     // the set of allcoated references, but values of step may contain
     // references".  This isn't a problem when StepImpliesValid is concretised
