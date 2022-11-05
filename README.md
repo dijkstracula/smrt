@@ -21,8 +21,8 @@ SMRT is a verified SMR storage stack.
 Ensure you have Dafny installed.  If the Dafny binary is not located at
 `~/code/dafny/Binaries/`, set `DAFNY_ROOT` on your shell appropriately.
 
-## Building
+## Verifying
 
 ```
-$ make -C src/
+$ make
 ```
