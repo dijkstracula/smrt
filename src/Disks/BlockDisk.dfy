@@ -39,19 +39,15 @@ module BlockDisk refines Disk {
     }
 
     function method Read(c: Constants, s: State, block_id: int) : Block.State
-        requires Valid(c, s)
         requires 0 <= block_id < |s.blocks|
-        ensures Block.Valid(Read(c, s, block_id))
     {
         s.blocks[block_id]
     }
 
     predicate Write(c: Constants, s: State, s': State, block_id: int, val: Block.State)
-        requires Valid(c, s)
-        ensures Valid(c, s)
     {
-        && 0 <= block_id < |s.blocks|
         && Block.Valid(val)
+        && 0 <= block_id < |s.blocks| == |s'.blocks|
         && s'.blocks == s.blocks[block_id := val]
     }
 
