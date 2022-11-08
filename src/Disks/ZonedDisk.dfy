@@ -156,14 +156,23 @@ module ZonedDisk refines Disk {
         && forall i :: 0 <  i < |zone_map| ==> contiguous_interval(zone_map, i)
     }
 
-    method resolve_lba(c: Constants, lba: uint64) returns (zone: int, offset: uint64) 
+    predicate resolve_lba(c: Constants, lba: uint64, zone_off: (int, uint64))
+        requires zone_map_well_formed(c.n_blocks, c.zone_map)
+    {
+        var zone := zone_off.0;
+        var off := zone_off.1;
+
+        && 0 <= lba < c.n_blocks
+        && 0 <= zone < |c.zone_map|
+        && c.zone_map[zone].0 <= lba < c.zone_map[zone].1
+        && off == lba - c.zone_map[zone].0
+    }
+
+    // XXX: I don't think I'll ever be in a position to call a method; oops..???
+    method ResolveLBA(c: Constants, lba: uint64) returns (zone: int, offset: uint64) 
         requires 0 <= lba < c.n_blocks
         requires zone_map_well_formed(c.n_blocks, c.zone_map)
-
-        ensures 0 <= zone < |c.zone_map|
-        ensures 0 <= c.zone_map[zone].0 < c.n_blocks
-        ensures c.zone_map[zone].0 <= lba < c.zone_map[zone].1;
-        ensures offset == lba - c.zone_map[zone].0;
+        //ensures resolve_lba(c, lba, zone, offset)
     {
         var i := 0;
 

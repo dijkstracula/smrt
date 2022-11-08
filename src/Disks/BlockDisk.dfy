@@ -91,7 +91,7 @@ module BlockDisk refines Disk {
         exists step :: NextStep(c, s, s', step)
     }
 
-    // Invariant nonsense
+    // Invariant preservation
     
     lemma InitImpliesValid(c: Constants) 
     {}
@@ -103,10 +103,8 @@ module BlockDisk refines Disk {
     {
         var step :| NextStep(c, s, s', step);
         match step {
-            case ReadBlock(off, val) => {}
-            case WriteBlock(off, val) => {
-                assert |s.blocks| == |s'.blocks|;
-            }
+            case ReadBlock(off, val) => ReadPreservesValid(c, s, s', off, val);
+            case WriteBlock(off, val) => WritePreservesValid(c, s, s', off, val);
         }
     }
 
