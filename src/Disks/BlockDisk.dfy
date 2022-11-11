@@ -26,7 +26,7 @@ module BlockDisk refines Disk {
     import opened Block
 
     datatype Constants = Constants(
-        n_blocks: uint32
+        n_blocks: uint64
     )
     datatype State = State(
         // XXX: should this be seq<option<Block>> ?

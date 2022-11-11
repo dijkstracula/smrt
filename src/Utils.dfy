@@ -14,4 +14,12 @@ module Utils {
     {
         if a > b then a else b
     }
+
+    // what's monads, precious?
+
+    function method Flatten<A>(ss: seq<seq<A>>) : seq<A>
+    {
+        if |ss| == 0 then [] else
+        ss[0] + Flatten(ss[1..])
+    }
 }

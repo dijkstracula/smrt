@@ -1,6 +1,7 @@
 include "../Types.dfy"
 include "../Disks/BlockDisk.dfy"
 
+module BlockDiskRefinesItself {
 import opened NativeTypes
 
 import C = BlockDisk
@@ -49,4 +50,5 @@ lemma RefinesStep(c: C.Constants, s: C.State, s': C.State, step: C.Step)
         case ReadBlock(b, val) => RefinesReadStep(c, s, s', b, val);
         case WriteBlock(b, val) => RefinesWriteStep(c, s, s', b, val);
     }
+}
 }

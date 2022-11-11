@@ -27,7 +27,7 @@ module Zone {
     {
         && 0 < |s.blocks|
         && 0 <= s.write_ptr as int <= |s.blocks|
-        && forall i :: 0 <= i < s.write_ptr ==> Block.Valid(s.blocks[i])
+        && (forall i :: 0 <= i < s.write_ptr ==> Block.Valid(s.blocks[i]))
     }
 
     function method Read(s: State, block_offset: uint64) : Block.State
@@ -40,12 +40,12 @@ module Zone {
 
     predicate Write(s: State, s': State, b: Block.State)
         requires Valid(s)
-        requires Valid(s')
         requires Block.Valid(b)
     {
         && !Full(s)
         && !Empty(s')
         && s.write_ptr == s'.write_ptr - 1
+        && |s.blocks| == |s'.blocks|
         && s.blocks[0..s.write_ptr] == s'.blocks[0..s.write_ptr]
         && s'.blocks[s.write_ptr] == b
     }
@@ -89,12 +89,14 @@ module ZonedDisk refines Disk {
     function method Init(c: Constants) : State
     {
         State.State(
-            seq(|c.zone_map|, i => Zone.Init(c.zone_map[i].1 - c.zone_map[i].0))
+            seq(|c.zone_map|, i requires 0 <= i < |c.zone_map| => Zone.Init(c.zone_map[i].1 - c.zone_map[i].0))
         )
     }
 
     function method Read(c: Constants, s: State, zone: uint64, block: uint64) : Block.State
         requires Valid(c, s)
+        requires 0 <= zone as int < |c.zone_map|
+        requires 0 <= block < s.zones[zone].write_ptr
         ensures Block.Valid(Read(c, s, zone, block))
     {
         s.zones[zone].blocks[block]
@@ -102,24 +104,37 @@ module ZonedDisk refines Disk {
 
     predicate Append(c: Constants, s: State, s': State, zone_id: uint64, block: Block.State)
         requires Valid(c, s)
-        ensures Valid(c, s')
+        requires 0 <= zone_id as int < |c.zone_map|
+        requires !Full(s.zones[zone_id])
+        requires Block.Valid(block)
     {
         var write_ptr := s.zones[zone_id].write_ptr;
-        var pre_blocks := s.zones[zone_id].blocks[write_ptr := block];
-        var post_blocks := s'.zones[zone_id].blocks[0..write_ptr + 1];
 
-        && 0 <= zone_id < |c.zone_map| as uint64
+        // Only zone_id is touched in an append operation; the rest stay the same...
+        && |s.zones| == |s'.zones|
+        && (forall z :: 0 <= z < |s.zones| 
+            ==> z != zone_id as int 
+            ==> s.zones[z] == s'.zones[z])
+
+        // ...and the new and old zones are identical except for...
+        && |s.zones[zone_id].blocks| == |s'.zones[zone_id].blocks|
+        && (forall b :: 0 <= b < write_ptr ==> s.zones[zone_id].blocks[b] == s'.zones[zone_id].blocks[b])
+
+        // ...the single additional element.
+        && Zone.Write(s.zones[zone_id], s'.zones[zone_id], block)
         && s'.zones[zone_id].write_ptr == write_ptr + 1
-        && pre_blocks[0..write_ptr + 1] == post_blocks
+        && s'.zones[zone_id].blocks[write_ptr] == block
     }
 
     predicate Reset(c: Constants, s: State, s': State, zone_id: uint64)
         requires Valid(c, s)
+        requires 0 <= zone_id as int < |c.zone_map|
     {
-        && forall i :: 0 <= i < |c.zone_map| 
-            ==> i != zone_id as int 
-            ==> s.zones[i] == s'.zones[i]
-        && s'.zones[zone_id] == Zone.Reset(s.zones[zone_id])
+        && |s.zones| == |s'.zones|
+        && (forall z :: 0 <= z < |c.zone_map| 
+            ==> z != zone_id as int 
+            ==> s.zones[z] == s'.zones[z])
+        && (s'.zones[zone_id] == Zone.Reset(s.zones[zone_id]))
     }
 
     // Invariants
@@ -133,27 +148,34 @@ module ZonedDisk refines Disk {
     {
         && ConstantsValid(c)
         && |s.zones| == |c.zone_map|
-        && forall i :: 0 <= i < |c.zone_map|
-            ==> |s.zones[i].blocks| == (c.zone_map[i].1 - c.zone_map[i].0) as int
+        && (forall i :: 0 <= i < |c.zone_map| ==> Zone.Valid(s.zones[i]))
+        && (forall i :: 0 <= i < |c.zone_map|
+            ==> |s.zones[i].blocks| == (c.zone_map[i].1 - c.zone_map[i].0) as int)
     }
 
 
     // Defining a function just to have something for Z3 to trigger on.
-    predicate contiguous_interval(z: seq<(uint64, uint64)>, i: int)
-        requires 0 < i < |z|
+    predicate contiguous_interval(z: seq<(uint64, uint64)>, j: int)
+        requires 0 < j < |z|
     {
-        && z[i-1].1 == z[i].0
+        && z[j-1].1 == z[j].0
+        && (forall i :: 0 <= i < j < |z| ==> z[i].1 < z[j].0)
     }
 
     predicate zone_map_well_formed(n_blocks: uint64, zone_map: seq<(uint64, uint64)>)
     {
-        n_blocks > 0
         && 0 < |zone_map| as int
         && zone_map[0].0 == 0
         && zone_map[|zone_map| - 1].1 == n_blocks
-        && forall i :: 0 <= i < |zone_map| ==> 0 < zone_map[i].1 < zone_map[i].1
-        && forall i :: 0 <= i < |zone_map| ==> 0 < (zone_map[i].1 - zone_map[i].0) < UINT64_MAX as uint64
-        && forall i :: 0 <  i < |zone_map| ==> contiguous_interval(zone_map, i)
+        && (forall i :: 0 <= i < |zone_map| ==> zone_map[i].0 < zone_map[i].1)
+        && (forall i :: 0 <= i < |zone_map| ==> (zone_map[i].1 as int - zone_map[i].0 as int) < UINT64_MAX)
+        && (forall i :: 0 <  i < |zone_map| ==> contiguous_interval(zone_map, i))
+    }
+
+    predicate lba_in_range(c: Constants, lba: uint64)
+        requires ConstantsValid(c)
+    {
+        c.zone_map[0].0 <= lba < c.zone_map[|c.zone_map| - 1].1
     }
 
     predicate resolve_lba(c: Constants, lba: uint64, zone_off: (int, uint64))
@@ -162,7 +184,7 @@ module ZonedDisk refines Disk {
         var zone := zone_off.0;
         var off := zone_off.1;
 
-        && 0 <= lba < c.n_blocks
+        && lba_in_range(c, lba)
         && 0 <= zone < |c.zone_map|
         && c.zone_map[zone].0 <= lba < c.zone_map[zone].1
         && off == lba - c.zone_map[zone].0
@@ -172,7 +194,7 @@ module ZonedDisk refines Disk {
     method ResolveLBA(c: Constants, lba: uint64) returns (zone: int, offset: uint64) 
         requires 0 <= lba < c.n_blocks
         requires zone_map_well_formed(c.n_blocks, c.zone_map)
-        //ensures resolve_lba(c, lba, zone, offset)
+        ensures resolve_lba(c, lba, (zone, offset))
     {
         var i := 0;
 
@@ -194,7 +216,7 @@ module ZonedDisk refines Disk {
 
     datatype Step =
     | ReadFromZone(zone: uint64, block: uint64, val: Block.State)
-    | AppendToZone(zone_idx: uint64, contents: seq<uint8>)
+    | AppendToZone(zone_idx: uint64, val: Block.State)
     | ResetZone(zone_idx: uint64)
 
     predicate NextStep(c: Constants, s: State, s': State, step: Step)
@@ -203,11 +225,14 @@ module ZonedDisk refines Disk {
         {
             case ReadFromZone(zone, block, val) =>
                 && 0 <= zone as int < |s.zones|
+                && 0 <= block < s.zones[zone].write_ptr
                 && Read(c, s, zone, block) == val
                 && s == s'
 
             case AppendToZone(zone, val) => 
                 && 0 <= zone as int < |s.zones| == |s'.zones|
+                && !Full(s.zones[zone])
+                && Block.Valid(val)
                 && Append(c, s, s', zone, val)
 
             case ResetZone(zone) => 
@@ -226,10 +251,20 @@ module ZonedDisk refines Disk {
     lemma InitImpliesValid(c: Constants)
         {}
 
+/*
     lemma NextPreservesValid(c: Constants, s: State, s': State)
         requires Valid(c, s)
         requires Next(c, s, s')
         ensures Valid(c, s')
     {
-    }
+        var step :| NextStep(c, s, s', step);
+        match step {
+            case ReadFromZone(z, b, val) => {
+            }
+            case AppendToZone(z, b) => {
+
+            }
+            case ResetZone(z) => {}
+        }
+    } */
 }
