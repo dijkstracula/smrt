@@ -52,7 +52,7 @@ module CowZonedDisk refines Disk {
             /* Begin with the identity mapping for the first (n-1) zones,
              * leaving the final zone for our initial buffer.  */
             |c.zd.zone_map| as int - 1,
-            seq(|c.zd.zone_map| - 1, i => i)
+            seq(|c.zd.zone_map|, i => i)
         )
     }
 
@@ -74,29 +74,43 @@ module CowZonedDisk refines Disk {
 
     predicate buffer_map_well_formed(c: Constants, s: State)
     {
-        var map_max := |c.zd.zone_map| - 1;
         var bmap := s.buffer_map;
 
         // the buffer map needs to be a permutation of [0..|c.zd.zone_map|)
         // with exactly one element missing, namely buffer_zone.
-        && (|s.buffer_map| == |c.zd.zone_map| - 1)
-        && (forall i :: 0 <= i       < |bmap| ==> 0 <= bmap[i] <= map_max)
-        && (forall i,j :: 0 <= i < j < |bmap| ==> bmap[i] != bmap[j])
-        && (forall i :: 0 <= i       < |bmap| ==> bmap[i] != s.buffer_zone)
+        // XXX: is it fine to leave bmap[buffer_zone] undefined?
+        && (|s.buffer_map| == |c.zd.zone_map|)
+        && (forall i :: 0 <= i       < |bmap| ==> 0 <= bmap[i] < |c.zd.zone_map|)
+        && (forall i,j :: 0 <= i < j < |bmap| 
+            ==> i != s.buffer_zone && j != s.buffer_zone ==> bmap[i] != bmap[j])
+        //&& (forall i :: 0 <= i       < |bmap| ==> bmap[i] != s.buffer_zone)
 
         // The buffer zone needs to be in range, and it has to be empty.
         && (0 <= s.buffer_zone < |s.zd.zones|)
         && Zone.Empty(s.zd.zones[s.buffer_zone])
     }
 
+    function buffer_resolve(c: Constants, s: State, lzone: int): int
+        requires Valid(c, s)
+        requires 0 <= lzone                       < |c.zd.zone_map|
+        ensures  0 <= buffer_resolve(c, s, lzone) < |c.zd.zone_map|
+    {
+        s.buffer_map[lzone]
+    }
+
     function Read(c: Constants, s: State, lba: uint64) : Block.State
         requires Valid(c, s)
-        requires 0 <= lba < c.zd.n_blocks
+        requires ZonedDisk.lba_in_range(c.zd, lba)
         //ensures Block.Valid(Read(c, s, lba))
     {
-        var p :| ZonedDisk.resolve_lba(c.zd, lba, p);
-        var (lzone, off) := p;
-        var pzone := s.buffer_map[lzone];
+        ZonedDisk.resolve_lba_functional(c.zd, lba);
+        var lzone: int :| ZonedDisk.resolve_lba(c.zd, lba, lzone);
+        var pzone := buffer_resolve(c, s, lzone);
+
+        assert c.zd.zone_map[pzone].1 - c.zd.zone_map[pzone].0
+            == c.zd.zone_map[lzone].1 - c.zd.zone_map[lzone].0;
+
+        var off := lba - c.zd.zone_map[lzone].0;
 
         s.zd.zones[pzone].blocks[off]
     }
@@ -104,12 +118,11 @@ module CowZonedDisk refines Disk {
     // XXX: This will do a full zone copy.  Where should the fact that this involves
     // multiple atomic operaitons live?  That could be at the refinement layer, but
     // maybe it needs to be here?
+    /*
     predicate Write(c: Constants, s: State, s': State, lba: uint64, val: Block.State)
         requires Valid(c, s)
         requires 0 <= lba < c.zd.n_blocks
     {
-        true
-        /*
         var p :| ZonedDisk.resolve_lba(c.zd, lba, p);
         var (lzone, off) := p;
         var pzone := s.buffer_map[lzone];
@@ -121,8 +134,6 @@ module CowZonedDisk refines Disk {
         );
 
         assert Zone.Valid(dst_zone);
-
-        && |s.zd.zones| == |s'.zd.zones|
 
         // The zone containing the block we want to destructively write
         // is now the new buffer zone
@@ -136,8 +147,8 @@ module CowZonedDisk refines Disk {
         // No other zones are touched
         && (forall i :: 0 <= i < |s'.zd.zones| ==>
             (i != pzone && i != s.buffer_zone ==> s.zd.zones[i] == s'.zd.zones[i]))
-            */
     }
+    */
 
 
     // Steps and step relations
@@ -151,11 +162,11 @@ module CowZonedDisk refines Disk {
         Valid(c, s) 
         && (match step {
             case ReadBlock(off, val) => 
-                && ZonedDisk.lba_in_range(c.zd, off) ==>
+                && ZonedDisk.lba_in_range(c.zd, off)
                 && Read(c, s, off) == val
             case WriteBlock(off, val) => 
-                && ZonedDisk.lba_in_range(c.zd, off) ==>
-                && Write(c, s, s', off, val)
+                && ZonedDisk.lba_in_range(c.zd, off)
+                //&& Write(c, s, s', off, val)
         })    
     }
 
@@ -190,11 +201,13 @@ module CowZonedDisk refines Disk {
         requires Read(c, s, lba) == val
         ensures Valid(c, s')
     {}
-    
+
+   /* 
     lemma WritePreservesValid(c: Constants, s: State, s': State, lba: uint64, val: Block.State)
         requires Valid(c, s)
         requires Write(c, s, s', lba, val);
         ensures Valid(c, s')
     {}
+    */
 
 }

@@ -159,7 +159,6 @@ module ZonedDisk refines Disk {
         requires 0 < j < |z|
     {
         && z[j-1].1 == z[j].0
-        && (forall i :: 0 <= i < j < |z| ==> z[i].1 < z[j].0)
     }
 
     predicate zone_map_well_formed(n_blocks: uint64, zone_map: seq<(uint64, uint64)>)
@@ -167,9 +166,20 @@ module ZonedDisk refines Disk {
         && 0 < |zone_map| as int
         && zone_map[0].0 == 0
         && zone_map[|zone_map| - 1].1 == n_blocks
-        && (forall i :: 0 <= i < |zone_map| ==> zone_map[i].0 < zone_map[i].1)
-        && (forall i :: 0 <= i < |zone_map| ==> (zone_map[i].1 as int - zone_map[i].0 as int) < UINT64_MAX)
+        && zone_map_ordered_total(zone_map)
+    }
+
+    predicate zone_map_ordered_total(zone_map: seq<(uint64, uint64)>)
+    {
+        && 0 < |zone_map| as int
         && (forall i :: 0 <  i < |zone_map| ==> contiguous_interval(zone_map, i))
+        && (forall i :: 0 <= i < |zone_map| ==> zone_map[i].0 < zone_map[i].1)
+        && (forall i :: 0 <= i < |zone_map| ==> (zone_map[i].1 - zone_map[i].0) as int < UINT64_MAX)
+
+        // XXX: seems weird that these can't be figured out.
+        && (forall i,j :: 0 <= i < j < |zone_map| ==> zone_map[i].0 < zone_map[j].0)
+        && (forall i,j :: 0 <= i < j < |zone_map| ==> zone_map[i].0 < zone_map[j].1)
+        && (forall i,j :: 0 <= i < j < |zone_map| ==> zone_map[i].1 < zone_map[j].1)
     }
 
     predicate lba_in_range(c: Constants, lba: uint64)
@@ -178,23 +188,31 @@ module ZonedDisk refines Disk {
         c.zone_map[0].0 <= lba < c.zone_map[|c.zone_map| - 1].1
     }
 
-    predicate resolve_lba(c: Constants, lba: uint64, zone_off: (int, uint64))
+    predicate resolve_lba(c: Constants, lba: uint64, zone: int)
         requires zone_map_well_formed(c.n_blocks, c.zone_map)
     {
-        var zone := zone_off.0;
-        var off := zone_off.1;
-
         && lba_in_range(c, lba)
         && 0 <= zone < |c.zone_map|
         && c.zone_map[zone].0 <= lba < c.zone_map[zone].1
-        && off == lba - c.zone_map[zone].0
     }
 
-    // XXX: I don't think I'll ever be in a position to call a method; oops..???
-    method ResolveLBA(c: Constants, lba: uint64) returns (zone: int, offset: uint64) 
-        requires 0 <= lba < c.n_blocks
+    function resolve_zone_offset(c: Constants, lba: uint64): uint64
+        requires ConstantsValid(c)
+        requires lba_in_range(c, lba)
+        ensures exists z :: 
+            && resolve_lba(c, lba, z) 
+            // XXX: newtype constraints are a PITA
+            && c.zone_map[z].0 as int + resolve_zone_offset(c, lba) as int == lba as int
+    {
+        resolve_lba_functional(c, lba);
+        var lzone: int :| resolve_lba(c, lba, lzone);
+        lba - c.zone_map[lzone].0
+    }
+
+    lemma resolve_lba_functional(c: Constants, lba: uint64)
         requires zone_map_well_formed(c.n_blocks, c.zone_map)
-        ensures resolve_lba(c, lba, (zone, offset))
+        requires lba_in_range(c, lba)
+        ensures exists z :: resolve_lba(c, lba, z)
     {
         var i := 0;
 
@@ -203,13 +221,16 @@ module ZonedDisk refines Disk {
             invariant i > 0 ==> lba >= c.zone_map[i-1].1
             invariant i > 0 ==> contiguous_interval(c.zone_map, i)
         {
-            if lba >= c.zone_map[i].0 && lba < c.zone_map[i].1 {
-                zone := i;
-                offset := lba - c.zone_map[i].0;
+            if c.zone_map[i].0 <= lba < c.zone_map[i].1 {
+                var zone := i;
+                var offset := lba - c.zone_map[i].0;
+                assert resolve_lba(c, lba, zone);
                 return;
             }
             i := i + 1;
         }
+
+        assert false; /* This must be unreachable! */
     }
 
     // Steps and step relations
