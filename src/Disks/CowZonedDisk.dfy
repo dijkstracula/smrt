@@ -10,6 +10,8 @@
  * Yeah, this sucks!  Nobody should build a drive this way, but the intention
  * here is to get a trivial remapping system working and show refinement, before
  * we show something more interesting.
+ *
+ * "I send a the COW Zones into space!! I don't pay a the taxes!! Ohhhhhh!!!"
  */
 
 include "ZonedDisk.dfy"
