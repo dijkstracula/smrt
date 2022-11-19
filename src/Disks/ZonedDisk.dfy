@@ -25,9 +25,9 @@ module Zone {
 
     function Valid(s: State) : bool 
     {
-        && 0 < |s.blocks|
+        && 0 < |s.blocks| < UINT64_MAX
         && 0 <= s.write_ptr as int <= |s.blocks|
-        && (forall i :: 0 <= i < s.write_ptr ==> Block.Valid(s.blocks[i]))
+        && (forall i :: 0 <= i < |s.blocks| ==> Block.Valid(s.blocks[i]))
     }
 
     function method Read(s: State, block_offset: uint64) : Block.State
@@ -41,24 +41,20 @@ module Zone {
     predicate Write(s: State, s': State, b: Block.State)
         requires Valid(s)
         requires Block.Valid(b)
+        ensures Valid(s)
     {
         && !Full(s)
         && !Empty(s')
         && s.write_ptr == s'.write_ptr - 1
-        && |s.blocks| == |s'.blocks|
-        && s.blocks[0..s.write_ptr] == s'.blocks[0..s.write_ptr]
-        && s'.blocks[s.write_ptr] == b
+        && s'.blocks == s.blocks[s.write_ptr := b]
     }
 
     function method Reset(s: State) : State
         requires Valid(s)
         ensures Valid(Reset(s))
+        ensures Empty(Reset(s))
     {
-        var blocks := |s.blocks|;
-
-        State(
-            write_ptr := 0,
-            blocks := seq(blocks, i => Block.Init()))
+        Init(|s.blocks| as uint64)
     }
 
     predicate Empty(s: State)
@@ -70,6 +66,30 @@ module Zone {
     {
         s.write_ptr as int == |s.blocks|
     }
+
+    predicate Zeroed(s: State)
+    {
+        Full(s) && (forall i :: 0 <= i < |s.blocks| ==> 
+            s.blocks[i] == seq(Block.block_sz, i => 0))
+    }
+
+    lemma WriteImpliesValid(s: State, s': State, b: Block.State)
+        requires Valid(s)
+        requires Block.Valid(b)
+        requires Write(s, s', b)
+        ensures Valid(s')
+    {}
+
+    lemma ResetImpliesValid(s: State)
+        requires Valid(s)
+        ensures Valid(Reset(s))
+    {}
+
+    lemma ResetImpliesEmpty(s: State)
+        requires Valid(s)
+        ensures Empty(Reset(s))
+    {}
+
 }
 
 module ZonedDisk refines Disk {
@@ -131,10 +151,13 @@ module ZonedDisk refines Disk {
         requires 0 <= zone_id as int < |c.zone_map|
     {
         && |s.zones| == |s'.zones|
-        && (forall z :: 0 <= z < |c.zone_map| 
+        && s'.zones == s.zones[zone_id := Zone.Reset(s.zones[zone_id])]
+        /*
+        && (forall z :: 0 <= z < |s.zones| 
             ==> z != zone_id as int 
             ==> s.zones[z] == s'.zones[z])
         && (s'.zones[zone_id] == Zone.Reset(s.zones[zone_id]))
+        */
     }
 
     // Invariants
@@ -212,7 +235,7 @@ module ZonedDisk refines Disk {
     lemma resolve_lba_functional(c: Constants, lba: uint64)
         requires zone_map_well_formed(c.n_blocks, c.zone_map)
         requires lba_in_range(c, lba)
-        ensures exists z :: resolve_lba(c, lba, z)
+        ensures exists z :: 0 <= z < |c.zone_map| && resolve_lba(c, lba, z)
     {
         var i := 0;
 
@@ -271,6 +294,14 @@ module ZonedDisk refines Disk {
 
     lemma InitImpliesValid(c: Constants)
         {}
+
+    lemma ResetPreservesValid(c: Constants, s: State, s': State)
+        requires Valid(c,s)
+        ensures forall s', i: uint64 :: 
+            0 <= i as int < |c.zone_map| 
+            ==> Reset(c, s, s', i) 
+            ==> Valid(c, s')
+    {}
 
 /*
     lemma NextPreservesValid(c: Constants, s: State, s': State)
