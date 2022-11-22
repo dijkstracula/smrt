@@ -26,7 +26,7 @@ module BlockDisk refines Disk {
     import opened Block
 
     datatype Constants = Constants(
-        n_blocks: uint64
+        n_blocks: int
     )
     datatype State = State(
         // XXX: should this be seq<option<Block>> ?
@@ -62,7 +62,7 @@ module BlockDisk refines Disk {
     {
         && ConstantsValid(c)
         && |s.blocks| == c.n_blocks as int
-        && forall i :: 0 <= i < |s.blocks| ==> Block.Valid(s.blocks[i])
+        && (forall i :: 0 <= i < |s.blocks| ==> Block.Valid(s.blocks[i]))
     }
 
 

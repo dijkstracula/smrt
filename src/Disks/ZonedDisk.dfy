@@ -85,11 +85,6 @@ module Zone {
         ensures Valid(Reset(s))
     {}
 
-    lemma ResetImpliesEmpty(s: State)
-        requires Valid(s)
-        ensures Empty(Reset(s))
-    {}
-
 }
 
 module ZonedDisk refines Disk {
@@ -164,7 +159,8 @@ module ZonedDisk refines Disk {
 
     predicate ConstantsValid(c: Constants)
     {
-        zone_map_well_formed(c.n_blocks, c.zone_map)
+        && c.n_blocks > 0 
+        && zone_map_well_formed(c.n_blocks, c.zone_map)
     }
 
     predicate Valid(c: Constants, s: State) 

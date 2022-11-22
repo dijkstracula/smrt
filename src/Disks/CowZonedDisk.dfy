@@ -70,6 +70,7 @@ module CowZonedDisk refines Disk {
     predicate Valid(c: Constants, s: State)
     {
         && ConstantsValid(c)
+        && AllZonesAreEquallySized(c)
         && ZonedDisk.Valid(c.zd, s.zd)
         && (0 <= s.buffer_zone as int < |s.zd.zones|)
         && buffer_map_well_formed(c, s)
@@ -77,6 +78,24 @@ module CowZonedDisk refines Disk {
         // The buffer zone is "zeroed out"
         && Zone.Empty(s.zd.zones[s.buffer_zone])
     }
+
+    function BlocksPerZone(c: Constants): uint64
+        requires ConstantsValid(c)
+        // XXX: This postcondition is already part of ConstantsValid; I don't
+        // know why I have to state it here for CowZonedRefinement to pass??
+        ensures AllZonesAreEquallySized(c)
+    {
+        c.zd.zone_map[0].1 - c.zd.zone_map[0].0
+    }
+
+    predicate AllZonesAreEquallySized(c: Constants)
+        requires ConstantsValid(c)
+    {
+        forall i,j :: 0 <= i < j < |c.zd.zone_map| ==>
+            (c.zd.zone_map[i].1 - c.zd.zone_map[i].0) ==
+            (c.zd.zone_map[j].1 - c.zd.zone_map[j].0)
+    }
+
 
     predicate lba_in_range(c: Constants, lba: uint64)
         requires ConstantsValid(c)
