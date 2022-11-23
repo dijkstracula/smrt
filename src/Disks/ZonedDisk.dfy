@@ -127,9 +127,7 @@ module ZonedDisk refines Disk {
 
         // Only zone_id is touched in an append operation; the rest stay the same...
         && |s.zones| == |s'.zones|
-        && (forall z :: 0 <= z < |s.zones| 
-            ==> z != zone_id as int 
-            ==> s.zones[z] == s'.zones[z])
+        && (forall z :: 0 <= z < |s.zones| ==> z != zone_id as int ==> s.zones[z] == s'.zones[z])
 
         // ...and the new and old zones are identical except for...
         && |s.zones[zone_id].blocks| == |s'.zones[zone_id].blocks|
@@ -159,8 +157,8 @@ module ZonedDisk refines Disk {
 
     predicate ConstantsValid(c: Constants)
     {
-        && c.n_blocks > 0 
         && zone_map_well_formed(c.n_blocks, c.zone_map)
+        && c.n_blocks == c.zone_map[|c.zone_map| - 1].1
     }
 
     predicate Valid(c: Constants, s: State) 
@@ -168,8 +166,7 @@ module ZonedDisk refines Disk {
         && ConstantsValid(c)
         && |s.zones| == |c.zone_map|
         && (forall i :: 0 <= i < |c.zone_map| ==> Zone.Valid(s.zones[i]))
-        && (forall i :: 0 <= i < |c.zone_map|
-            ==> |s.zones[i].blocks| == (c.zone_map[i].1 - c.zone_map[i].0) as int)
+        && (forall i :: 0 <= i < |c.zone_map| ==> |s.zones[i].blocks| == (c.zone_map[i].1 - c.zone_map[i].0) as int)
     }
 
 
@@ -191,7 +188,7 @@ module ZonedDisk refines Disk {
     predicate zone_map_ordered_total(zone_map: seq<(uint64, uint64)>)
     {
         && 0 < |zone_map| as int
-        && (forall i :: 0 <  i < |zone_map| ==> contiguous_interval(zone_map, i))
+        && (forall i :: 0 <  i < |zone_map| ==> contiguous_interval(zone_map, i)) //zone_map[i-1].1 == zone_map[i].0)
         && (forall i :: 0 <= i < |zone_map| ==> zone_map[i].0 < zone_map[i].1)
         && (forall i :: 0 <= i < |zone_map| ==> (zone_map[i].1 - zone_map[i].0) as int < UINT64_MAX)
 
@@ -199,6 +196,7 @@ module ZonedDisk refines Disk {
         && (forall i,j :: 0 <= i < j < |zone_map| ==> zone_map[i].0 < zone_map[j].0)
         && (forall i,j :: 0 <= i < j < |zone_map| ==> zone_map[i].0 < zone_map[j].1)
         && (forall i,j :: 0 <= i < j < |zone_map| ==> zone_map[i].1 < zone_map[j].1)
+        && (forall i,j :: 0 <= i < j+1 < |zone_map| ==> zone_map[i].1 < zone_map[j].0)
     }
 
     predicate lba_in_range(c: Constants, lba: uint64)
@@ -208,6 +206,7 @@ module ZonedDisk refines Disk {
     }
 
     predicate resolve_lba(c: Constants, lba: uint64, zone: int)
+        requires ConstantsValid(c)
         requires zone_map_well_formed(c.n_blocks, c.zone_map)
     {
         && lba_in_range(c, lba)
@@ -229,6 +228,7 @@ module ZonedDisk refines Disk {
     }
 
     lemma resolve_lba_functional(c: Constants, lba: uint64)
+        requires ConstantsValid(c)
         requires zone_map_well_formed(c.n_blocks, c.zone_map)
         requires lba_in_range(c, lba)
         ensures exists z :: 0 <= z < |c.zone_map| && resolve_lba(c, lba, z)
@@ -294,9 +294,7 @@ module ZonedDisk refines Disk {
     lemma ResetPreservesValid(c: Constants, s: State, s': State)
         requires Valid(c,s)
         ensures forall s', i: uint64 :: 
-            0 <= i as int < |c.zone_map| 
-            ==> Reset(c, s, s', i) 
-            ==> Valid(c, s')
+            0 <= i as int < |c.zone_map| ==> Reset(c, s, s', i) ==> Valid(c, s')
     {}
 
 /*

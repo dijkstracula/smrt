@@ -50,8 +50,7 @@ module CowZonedDiskRefinesBlockDisk {
         // XXX: We don't know that, even though all the Blocks in the seq<seq<Block>> were valid, that
         // after flattening they remain exactly the same.  Punch a hole in the proof with an assume until
         // I can figure out why this might be.
-        assert forall i,j :: 0 <= i < |ssblocks| ==> 0 <= j < |zones[i].blocks| 
-            ==> Block.Valid(ssblocks[i][j]);
+        assert forall i,j :: 0 <= i < |ssblocks| ==> 0 <= j < |zones[i].blocks| ==> Block.Valid(ssblocks[i][j]);
         assume forall i :: 0 <= i < |blocks| ==> Block.Valid(blocks[i]);
 
         A.State(blocks)
@@ -63,4 +62,32 @@ module CowZonedDiskRefinesBlockDisk {
         requires C.Valid(c, C.Init(c))
         ensures A.Valid(IC(c), I(c, C.Init(c)))
     {}
+
+
+    lemma RefinesReadStep(c: C.Constants, s: C.State, s': C.State, block_id: uint64, val: Block.State)
+        requires C.Valid(c, s)
+        requires C.NextStep(c, s, s', C.ReadBlock(block_id, val))
+        requires C.Read(c, s, block_id) == val
+        ensures A.Read(IC(c), I(c, s), block_id as int) == val
+    {
+    }
+
+    lemma RefinesWriteStep(c: C.Constants, s: C.State, s': C.State, block_id: uint64, val: Block.State)
+        requires C.Valid(c, s)
+        requires C.NextStep(c, s, s', C.WriteBlock(block_id, val))
+        requires C.Write(c, s, s', block_id, val)
+        ensures A.Write(IC(c), I(c, s), I(c, s'), block_id as int, val)
+    {
+    }
+
+    lemma RefinesStep(c: C.Constants, s: C.State, s': C.State, step: C.Step)
+        requires C.ConstantsValid(c)
+        requires C.NextStep(c, s, s', step)
+        ensures A.Next(IC(c), I(c, s), I(c, s'))
+    {
+        match step {
+            case ReadBlock(b, val) => RefinesReadStep(c, s, s', b, val);
+            case WriteBlock(b, val) => RefinesWriteStep(c, s, s', b, val);
+        }
+    }
 }
