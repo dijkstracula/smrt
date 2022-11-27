@@ -80,6 +80,9 @@ module CowZonedDiskRefinesBlockDisk {
     {
     }
 
+/* XXX: This crashes Dafny!
+    https://github.com/dafny-lang/dafny/issues/3105
+
     lemma RefinesStep(c: C.Constants, s: C.State, s': C.State, step: C.Step)
         requires C.ConstantsValid(c)
         requires C.NextStep(c, s, s', step)
@@ -90,4 +93,5 @@ module CowZonedDiskRefinesBlockDisk {
             case WriteBlock(b, val) => RefinesWriteStep(c, s, s', b, val);
         }
     }
+    */
 }

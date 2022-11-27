@@ -196,7 +196,7 @@ module ZonedDisk refines Disk {
         && (forall i,j :: 0 <= i < j < |zone_map| ==> zone_map[i].0 < zone_map[j].0)
         && (forall i,j :: 0 <= i < j < |zone_map| ==> zone_map[i].0 < zone_map[j].1)
         && (forall i,j :: 0 <= i < j < |zone_map| ==> zone_map[i].1 < zone_map[j].1)
-        && (forall i,j :: 0 <= i < j+1 < |zone_map| ==> zone_map[i].1 < zone_map[j].0)
+        && (forall i,j :: 0 <= i < j+1 < |zone_map| ==> zone_map[i].1 > zone_map[j].0)
     }
 
     predicate lba_in_range(c: Constants, lba: uint64)

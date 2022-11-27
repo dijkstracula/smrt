@@ -44,6 +44,7 @@ module Utils {
         }
     }
 
+
     /*
     lemma FlattenedContentsUnchanged<T>(ss: seq<seq<T>>, s: seq<T>)
         requires Flatten(ss) == s
