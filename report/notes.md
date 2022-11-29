@@ -34,6 +34,9 @@ refinement in the Dafny programming language.  We have used these primitives in
 the development of SMRT, the beginning of a verified storage stack that takes
 advantage of SMR hard disks.
 
+We are interested in correctness at this point; we will discuss possible ways
+to reason about performance in the future work section.
+
 ## Dafny
 
 Dafny is cool!
@@ -132,3 +135,9 @@ Yikes, I better get started on this one!
   found, especially w/r/t the IDE plugin that related to refinement.
 
 - Be dogmatic about clean abstractions at your peril.  
+
+- Don't specialise to a hypothetical implementation too early - lots of
+  frustrating issues around fixed-with integer overflow that probably could
+  have been elided altogether.
+
+## Future work: towards an aspect-oriented modeling paradigm
