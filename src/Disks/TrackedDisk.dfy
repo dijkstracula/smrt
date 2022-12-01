@@ -10,6 +10,8 @@ include "../Types.dfy"
 // This may either be too coarse (presumably the device could do it at the block level?
 // or too fine (multiple tracks ought to be invalidated?)
 //
+// XXX: This is vestigal at this point.
+//
 module TrackedDisk {
     import opened NativeTypes
     import opened Types

@@ -38,17 +38,16 @@ module BlockDisk refines Disk {
         State(seq(c.n_blocks, i => Block.Init()))
     }
 
-    function method Read(c: Constants, s: State, block_id: int) : Block.State
-        requires 0 <= block_id < |s.blocks|
-    {
-        s.blocks[block_id]
+    function method Read(c: Constants, s: State, lba: uint64) : Block.State
+        requires 0 <= lba as int < |s.blocks| {
+        s.blocks[lba]
     }
 
-    predicate Write(c: Constants, s: State, s': State, block_id: int, val: Block.State)
-    {
-        && Block.Valid(val)
-        && 0 <= block_id < |s.blocks| == |s'.blocks|
-        && s'.blocks == s.blocks[block_id := val]
+    predicate Write(c: Constants, s: State, s': State, lba: uint64, val: Block.State) {
+        && Block.Valid(val)                   // A block is well-formed...
+        && 0 <= lba as int < |s.blocks|       // ...and the lba is within range...
+        && s'.blocks == s.blocks[lba := val]  // ...and the before and after states only
+                                              // differ in the block that was mutated.
     }
 
     // Invariant preservation
@@ -69,19 +68,19 @@ module BlockDisk refines Disk {
     // Step relations
 
     datatype Step =
-    | ReadBlock(lba: int, val: Block.State)
-    | WriteBlock(lba: int, val: Block.State)
+    | ReadBlock(lba: uint64, val: Block.State)  // `val` is the block at block address `lba`
+    | WriteBlock(lba: uint64, val: Block.State) // `val` is updated to be the block at `lba`
 
     predicate NextStep(c: Constants, s: State, s': State, step: Step)
     {
         Valid(c, s) 
         && match step {
             case ReadBlock(off, val) => 
-                && 0 <= off < |s.blocks| as int
+                && 0 <= off as int < |s.blocks| as int
                 && Read(c, s, off) == val
                 && s == s'
             case WriteBlock(off, val) => 
-                && 0 <= off < |s.blocks| as int
+                && 0 <= off as int < |s.blocks| as int
                 && Write(c, s, s', off, val)
         }       
     }
@@ -108,15 +107,15 @@ module BlockDisk refines Disk {
         }
     }
 
-    lemma ReadPreservesValid(c: Constants, s: State, s': State, lba: int, val: Block.State)
+    lemma ReadPreservesValid(c: Constants, s: State, s': State, lba: uint64, val: Block.State)
         requires Valid(c, s)
-        requires 0 <= lba < c.n_blocks as int
+        requires 0 <= lba as int < c.n_blocks as int
         requires s == s'
         requires Read(c, s, lba) == val
         ensures Valid(c, s')
     {}
     
-    lemma WritePreservesValid(c: Constants, s: State, s': State, lba: int, val: Block.State)
+    lemma WritePreservesValid(c: Constants, s: State, s': State, lba: uint64, val: Block.State)
         requires Valid(c, s)
         requires Write(c, s, s', lba, val);
         ensures Valid(c, s')

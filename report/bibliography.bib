@@ -25,3 +25,184 @@
   url = {https://zonedstorage.io/docs/introduction/smr},
   urldate = {2022-11-28}
 }
+
+@inproceedings{Ext4,
+author = {Aghayev, Abutalib and Ts'o, Theodore and Gibson, Garth and Desnoyers, Peter},
+title = {Evolving Ext4 for Shingled Disks},
+year = {2017},
+isbn = {9781931971362},
+publisher = {USENIX Association},
+address = {USA},
+abstract = {Drive-Managed SMR (Shingled Magnetic Recording) disks offer a plug-compatible higher-capacity replacement for conventional disks. For non-sequential workloads, these disks show bimodal behavior: After a short period of high throughput they enter a continuous period of low throughput.We introduce ext4-lazy, a small change to the Linux ext4 file system that significantly improves the throughput in both modes. We present benchmarks on four different drive-managed SMR disks from two vendors, showing that ext4-lazy achieves 1.7-5.4\texttimes{} improvement over ext4 on a metadata-light file server benchmark. On metadata-heavy benchmarks it achieves 2-13\texttimes{} improvement over ext4 on drive-managed SMR disks as well as on conventional disks.},
+booktitle = {Proceedings of the 15th Usenix Conference on File and Storage Technologies},
+pages = {105–119},
+numpages = {15},
+location = {Santa clara, CA, USA},
+series = {FAST'17}
+}
+
+@article{Exokernel,
+author = {Engler, D. R. and Kaashoek, M. F. and O'Toole, J.},
+title = {Exokernel: An Operating System Architecture for Application-Level Resource Management},
+year = {1995},
+issue_date = {Dec. 3, 1995},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {29},
+number = {5},
+issn = {0163-5980},
+url = {https://doi.org/10.1145/224057.224076},
+doi = {10.1145/224057.224076},
+journal = {SIGOPS Oper. Syst. Rev.},
+month = {dec},
+pages = {251–266},
+numpages = {16}
+}
+
+@inproceedings {CaveatScriptor,
+author = {Saurabh Kadekodi and Swapnil Pimpale and Garth A. Gibson},
+title = {{Caveat-Scriptor}: Write Anywhere Shingled Disks},
+booktitle = {7th USENIX Workshop on Hot Topics in Storage and File Systems (HotStorage 15)},
+year = {2015},
+address = {Santa Clara, CA},
+url = {https://www.usenix.org/conference/hotstorage15/workshop-program/presentation/kadekodi},
+publisher = {USENIX Association},
+month = jul,
+}
+
+@book{HardDiskDrive,
+  title={Hard Disk Drive: Mechatronics and Control},
+  author={Mamun, A.A. and Guo, G.X. and Bi, C.},
+  isbn={9781420004106},
+  series={Automation and Control Engineering},
+  url={https://books.google.com/books?id=wEnrTMn90B4C},
+  year={2017},
+  publisher={CRC Press}
+}
+
+@inproceedings{AlloyFFS,
+author = {Kang, Eunsuk and Jackson, Daniel},
+title = {Formal Modeling and Analysis of a Flash Filesystem in Alloy},
+year = {2008},
+isbn = {9783540876021},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+url = {https://doi.org/10.1007/978-3-540-87603-8_23},
+doi = {10.1007/978-3-540-87603-8_23},
+booktitle = {Proceedings of the 1st International Conference on Abstract State Machines, B and Z},
+pages = {294–308},
+numpages = {15},
+location = {London, UK},
+series = {ABZ '08}
+}
+
+@inproceedings{BilbyFS,
+  address          = {Suva, Fiji},
+  author           = {Amani, Sidney and Murray, Toby},
+  booktitle        = {Workshop on Models for Formal Analysis of Real Systems},
+  keywords         = {file system specification functional correctness asynchronous writes},
+  month            = nov,
+  pages            = {1--9},
+  paperurl         = {https://trustworthy.systems/publications/nicta_full_text/8972.pdf},
+  title            = {Specifying a Realistic File System},
+  year             = {2015}
+}
+
+@inproceedings{FSCQ,
+author = {Chen, Haogang and Ziegler, Daniel and Chajed, Tej and Chlipala, Adam and Kaashoek, M. Frans and Zeldovich, Nickolai},
+title = {Using Crash Hoare Logic for Certifying the FSCQ File System},
+year = {2015},
+isbn = {9781450338349},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2815400.2815402},
+doi = {10.1145/2815400.2815402},
+booktitle = {Proceedings of the 25th Symposium on Operating Systems Principles},
+pages = {18–37},
+numpages = {20},
+location = {Monterey, California},
+series = {SOSP '15}
+}
+
+@article{IronFleet,
+author = {Hawblitzel, Chris and Howell, Jon and Kapritsos, Manos and Lorch, Jacob R. and Parno, Bryan and Roberts, Michael L. and Setty, Srinath and Zill, Brian},
+title = {IronFleet: Proving Safety and Liveness of Practical Distributed Systems},
+year = {2017},
+issue_date = {July 2017},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {60},
+number = {7},
+issn = {0001-0782},
+url = {https://doi.org/10.1145/3068608},
+doi = {10.1145/3068608},
+journal = {Commun. ACM},
+month = {jun},
+pages = {83–92},
+numpages = {10}
+}
+
+@inproceedings{VeriBetrKV,
+author = {Hance, Travis and Lattuada, Andrea and Hawblitzel, Chris and Howell, Jon and Johnson, Rob and Parno, Bryan},
+title = {Storage Systems Are Distributed Systems (so Verify Them That Way!)},
+year = {2020},
+isbn = {978-1-939133-19-9},
+publisher = {USENIX Association},
+address = {USA},
+booktitle = {Proceedings of the 14th USENIX Conference on Operating Systems Design and Implementation},
+articleno = {6},
+numpages = {17},
+series = {OSDI'20}
+}
+
+@software{SMRT,
+author = {Taylor, Nathan},
+title = {{SMRT}},
+url = {https://github.com/dijkstracula/smrt}
+}
+
+@INPROCEEDINGS{SMRIndirection,
+  author={Cassuto, Yuval and Sanvido, Marco A. A. and Guyot, Cyril and Hall, David R. and Bandic, Zvonimir Z.},
+  booktitle={2010 IEEE 26th Symposium on Mass Storage Systems and Technologies (MSST)}, 
+  title={Indirection systems for shingled-recording disk drives}, 
+  year={2010},
+  volume={},
+  number={},
+  pages={1-14},
+  doi={10.1109/MSST.2010.5496971}}
+
+@book{RefinementBook,
+author = {Derrick, John and Boiten, Eerke},
+year = {2018},
+month = {09},
+pages = {},
+title = {Refinement: Semantics, Languages and Applications},
+isbn = {978-3-319-92709-1},
+journal = {Refinement: Semantics, Languages and Applications},
+doi = {10.1007/978-3-319-92711-4}
+}
+
+@inproceedings{Yggdrasil,
+author = {Sigurbjarnarson, Helgi and Bornholt, James and Torlak, Emina and Wang, Xi},
+title = {Push-Button Verification of File Systems via Crash Refinement},
+year = {2016},
+isbn = {9781931971331},
+publisher = {USENIX Association},
+address = {USA},
+booktitle = {Proceedings of the 12th USENIX Conference on Operating Systems Design and Implementation},
+pages = {1–16},
+numpages = {16},
+location = {Savannah, GA, USA},
+series = {OSDI'16}
+}
+
+@INPROCEEDINGS{HotDataIndent,
+  author={Lin, Chung-I and Park, Dongchul and He, Weiping and Du, David H.C.},
+  booktitle={2012 IEEE 20th International Symposium on Modeling, Analysis and Simulation of Computer and Telecommunication Systems}, 
+  title={H-SWD: Incorporating Hot Data Identification into Shingled Write Disks}, 
+  year={2012},
+  volume={},
+  number={},
+  pages={321-330},
+  doi={10.1109/MASCOTS.2012.44}}
+

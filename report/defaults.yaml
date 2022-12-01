@@ -1,2 +1,11 @@
+standalone: true
+citeproc: true
 output-file: report.html
 reference-links: true
+css: 
+  - pandoc.css
+metadata:
+  csl: acm.csl
+  title: "Straightforward and trait-forward disk modeling with SMRT"
+  author:
+    - Nathan Taylor <ntaylor@cs.utexas.edu>

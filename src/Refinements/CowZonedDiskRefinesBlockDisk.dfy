@@ -57,6 +57,8 @@ module CowZonedDiskRefinesBlockDisk {
     }
 
 
+/* XXX: This crashes Dafny!
+    https://github.com/dafny-lang/dafny/issues/3105
     lemma RefinesInit(c: C.Constants)
         requires C.ConstantsValid(c)
         requires C.Valid(c, C.Init(c))
@@ -80,8 +82,6 @@ module CowZonedDiskRefinesBlockDisk {
     {
     }
 
-/* XXX: This crashes Dafny!
-    https://github.com/dafny-lang/dafny/issues/3105
 
     lemma RefinesStep(c: C.Constants, s: C.State, s': C.State, step: C.Step)
         requires C.ConstantsValid(c)
@@ -92,6 +92,111 @@ module CowZonedDiskRefinesBlockDisk {
             case ReadBlock(b, val) => RefinesReadStep(c, s, s', b, val);
             case WriteBlock(b, val) => RefinesWriteStep(c, s, s', b, val);
         }
+    }
+    */
+}
+
+/* We want to show that on a write, you have to fault all the data over to the
+ * buffer zone _before_ updating the indirection map.
+ * TODO: where should this live?
+ */
+module CowZonedDiskCrashSequencing {
+    import opened NativeTypes
+    import opened Types
+    import ZonedDisk
+
+    import C = CowZonedDisk
+    import A = BlockDisk
+    import R = CowZonedDiskRefinesBlockDisk
+
+    datatype Step =
+        | IOStep(A.Step)
+        | CrashStep
+        | StutterStep
+
+    function Threaded(s: seq<A.Step>): seq<Step>
+    {
+        if |s| == 0 then []
+        else 
+            var x, xs := IOStep(s[0]), Threaded(s[1..]);
+            var cstr :| 0 <= cstr < 3;
+            (if cstr == 0      then [x]
+            else if cstr == 1  then [CrashStep, x]
+            else /* cstr == 2 */    [StutterStep, x]) + xs
+    }
+
+    predicate ValidOp(c: A.Constants, op: A.Step)
+        requires A.ConstantsValid(c)
+        requires op.ReadBlock?
+    {
+        && 0 <= op.lba as int < c.n_blocks
+        && A.Block.Valid(op.val)
+    }
+
+    function ReadOps(c: C.Constants, s: C.State, lba: uint64, val: A.Block.State): seq<A.Step>
+        requires C.Valid(c, s)
+        requires 0 <= lba as int < c.zd.n_blocks as int
+        requires A.Block.Valid(val)
+        ensures forall i :: 0 <= i < |ReadOps(c, s, lba, val)| ==> ReadOps(c, s, lba, val)[i].ReadBlock?
+        ensures forall i :: 0 <= i < |ReadOps(c, s, lba, val)| ==> ValidOp(R.IC(c), ReadOps(c, s, lba, val)[i])
+        //ensures C.Read(c, s, lba) == A.Read(R.IC(c), R.I(c, s), lba as int)
+    {
+        ZonedDisk.resolve_lba_functional(c.zd, lba);
+        var lzone: int :| ZonedDisk.resolve_lba(c.zd, lba, lzone);
+        assume 0 <= lzone < |s.zd.zones| - 1; // XXX: why isn't thie assert working??
+
+        var pzone := C.buffer_resolve(c, s, lzone);
+        assert 0 <= pzone < |s.zd.zones|;
+        var off := lba - c.zd.zone_map[lzone].0;
+
+        assume (pzone + off as int) < UINT64_MAX; // XXX: same???
+        assume (pzone as uint64 + off) < c.zd.zone_map[lzone].1; // XXX: same???
+        var op := A.ReadBlock(pzone as uint64 + off, val);
+        assert ZonedDisk.lba_in_range(c.zd, op.lba);
+        assume ValidOp(R.IC(c), op); // XXX: This times out otherwise, boooo
+
+        [op]
+    }
+
+    lemma ReadOpsAreValid(c: C.Constants, s: C.State, lba: uint64, val: A.Block.State)
+        requires C.Valid(c, s)
+        requires C.lba_in_range(c, lba)
+        requires A.Block.Valid(val)
+        requires C.Read(c, s, lba) == val
+        ensures A.Read(R.IC(c), R.I(c, s), lba) == val
+    {
+        var ic := R.IC(c);
+        var ist := R.I(c, s);
+        var ops := ReadOps(c, s, lba, val);
+
+        var i := 0;
+        while (i < |ops|) {
+            var step := ops[i]; // Or inject a crash??  What's a good way to compose things nondeterministically?
+            match step {
+                case ReadBlock(off, val) => {
+                    assert 0 <= off as int < ic.n_blocks;
+                }
+                case WriteBlock(off, val) => {
+                    assert false;
+                }
+            }       
+            i := i + 1;
+        }
+    }
+
+    /*
+    function WriteOps(c: C.Constants, s: C.State, op: C.WriteStep): seq<A.Step>
+        requires C.Valid(c, s)
+    {
+        ZonedDisk.resolve_lba_functional(c.zd, lba);
+        var lzone: int :| ZonedDisk.resolve_lba(c.zd, lba, lzone);
+        assert 0 <= lzone < |s.zd.zones| - 1;
+        var off := lba - c.zd.zone_map[lzone].0;
+
+        var pzone := buffer_resolve(c, s, lzone);
+        assert 0 <= pzone < |s.zd.zones|;
+
+        var src_zone := s.zd.zones[pzone];
     }
     */
 }

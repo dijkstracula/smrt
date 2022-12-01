@@ -37,6 +37,11 @@ advantage of SMR hard disks.
 We are interested in correctness at this point; we will discuss possible ways
 to reason about performance in the future work section.
 
+(Exokernelian approach: "library hardware", lol?  Is this anything)
+
+(Different specifications for different drive constraints?  What if we never
+actually cared about data loss?)
+
 ## Dafny
 
 Dafny is cool!

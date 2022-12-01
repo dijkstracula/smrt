@@ -11,10 +11,10 @@ abstract module Disk {
     type State
 
     /* Encodes all the things a Disk can do (Read a block, write a block, append
-     * to a zone, crash, etc) */
+     * to a zone, etc) */
     type Step
 
-    /* Given Disk contents, give us an initial drive state. */
+    /* Given drive constants, give us an initial state. */
     function method Init(c: Constants) : State 
         requires ConstantsValid(c)
         ensures Valid(c, Init(c))

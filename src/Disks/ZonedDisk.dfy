@@ -30,12 +30,12 @@ module Zone {
         && (forall i :: 0 <= i < |s.blocks| ==> Block.Valid(s.blocks[i]))
     }
 
-    function method Read(s: State, block_offset: uint64) : Block.State
+    function method Read(s: State, lba: uint64) : Block.State
         requires Valid(s)
-        requires 0 <= block_offset < s.write_ptr
+        requires 0 <= lba < s.write_ptr
         ensures Valid(s)
     {
-        s.blocks[block_offset]
+        s.blocks[lba]
     }
 
     predicate Write(s: State, s': State, b: Block.State)
@@ -297,20 +297,9 @@ module ZonedDisk refines Disk {
             0 <= i as int < |c.zone_map| ==> Reset(c, s, s', i) ==> Valid(c, s')
     {}
 
-/*
     lemma NextPreservesValid(c: Constants, s: State, s': State)
         requires Valid(c, s)
         requires Next(c, s, s')
         ensures Valid(c, s')
-    {
-        var step :| NextStep(c, s, s', step);
-        match step {
-            case ReadFromZone(z, b, val) => {
-            }
-            case AppendToZone(z, b) => {
-
-            }
-            case ResetZone(z) => {}
-        }
-    } */
+    {}
 }

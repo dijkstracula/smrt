@@ -11,4 +11,4 @@ all:
 
 .PHONY: report
 report: report/report.md report/bibliography.bib
-	pandoc  --citeproc --csl report/ieee.csl report/report.md --bibliography report/bibliography.bib -d report/defaults.yaml
+	pushd report; pandoc --csl report/acm.csl report.md --bibliography bibliography.bib -d defaults.yaml && popd

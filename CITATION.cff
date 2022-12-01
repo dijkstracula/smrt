@@ -5,7 +5,8 @@ message: >-
   metadata from this file.
 type: software
 authors:
-  - given-names: Taylor
-    family-names: Nathan
+  - given-names: Nathan
+    family-names: Taylor
     email: ntaylor@cs.utexas.edu
     affiliation: 'University of Texas, Austin'
+url: "https://github.com/dijkstracula/smrt"
