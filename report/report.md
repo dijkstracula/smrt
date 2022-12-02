@@ -19,9 +19,9 @@ were uncovered, and several PRs were put out to address many of them (
 Compiler:
 [#3044](https://github.com/dafny-lang/dafny/pull/3044),
 [#3093](https://github.com/dafny-lang/dafny/pull/3093),
-[#3130](https://github.com/dafny-lang/dafny/pull/3130); 
+[#3130](https://github.com/dafny-lang/dafny/pull/3130);
 Language server:
-[#290](https://github.com/dafny-lang/ide-vscode/issues/290),
+[#290](https://github.com/dafny-lang/ide-vscode/issues/290)
 ).
 
 ## Introduction
@@ -30,14 +30,14 @@ Uncovering software defects becomes all the more critical the farther down the
 stack it resides, the more stateful it is, and the more opaque its internals
 are.  Storage device controllers reside in the unfortunate intersection of all
 three: most software developers need never know of its existence, those who do
-have no choice but to treat it as an inscruitable black box, and what is more
+have no choice but to treat it as an inscrutable black box, and what is more
 stateful than a hard disk?  Any bugs that manifest in storage firmware would be
 nontrivial to diagnose and have a significant blast radius.  Hardware vendors,
 therefore, are justifiably conservative around firmware feature development and
 user-facing interfaces and abstractions.
 
 This conservatism is seen in each major shift in storage technology: flash
-controllers are complex out of nessessity, since wear leveling and write
+controllers are complex out of necessity, since wear levelling and write
 buffering, inherent to the technology itself, need to be hidden behind firmware
 in order to maintain the veneer of a block-addressable, non-degradable storage
 medium.
@@ -50,10 +50,10 @@ one-size-fits-all block-addressable interface to software at the expense of
 highly variable throughput if the drive's indirection mechanism cannot keep up
 with host I/O.  By contrast, _host-managed SMR_ exposes a series of append-only
 regions called _zones_ that avoid expensive indirection mechanisms and data
-corruption on random writes, but require significant rearchitecture to the
+corruption on random writes, but require significant re-architecture to the
 software that sits above it[@Ext4].  Proposals for so-called "caveat
 scriptor"[@CaveatScriptor] disks permit physical block writes anywhere on the
-disk, but an off-by-one bug in the software stack could have disasterious data
+disk, but an off-by-one bug in the software stack could have disastrous data
 integrity consequences.  It's unsurprising, then, that such drives do not
 actually exist in the wild.
 
@@ -69,10 +69,10 @@ controller could consume verified and signed policy code that conforms to a
 baseline formal specification; said signed code implements desired
 storage-level properties from the perspective of some high-performance
 application like a filesystem or database.  Equivalently: a software
-stack, formally checked against a model of an underyling _caveat scriptor_
+stack, formally checked against a model of an underlying _caveat scriptor_
 storage device, could peek and poke bits on such a disk in a safer manner.
 
-We use Dafny as a modeling language to explore these ideas; such models form
+We use Dafny as a modelling language to explore these ideas; such models form
 the bedrock for a verified SMR storage stack called SMRT[@SMRT], comprised so
 far of about 1150 lines of Dafny code.  Alternatives to Dafny abound; Alloy has
 seen adoption for reasoning about storage systems [@AlloyFFS], and a pure
@@ -80,9 +80,9 @@ type-theoretic approach that joins specification and a satisfying
 implementation has been enjoyed in a similar domain elsewhere [@BilbyFS]
 [@FSCQ].  That said, verification of large-scale systems through Dafny has
 found success in recent work [@IronFleet] [@VeriBetrKV]; in terms of Dafny
-language idioms, we drew particular inspriration from [@VeriBetrKV].
+language idioms, we drew particular inspiration from [@VeriBetrKV].
 
-## Disk drives as a modeling problem
+## Disk drives as a modelling problem
 
 Rather than working about a particular workload or application, this project
 takes a formal modeling approach as the first cut.  In particular, our goal was
@@ -92,12 +92,12 @@ other words, verify that a simple drive-managed SMR disk controller externally
 behaves indistinguishably from a non-SMR disk.
 
 At present, there are four disk models implemented in SMRT: the three of
-interest to us are a block-addressable disk, mimicing a CMR disk, a zoned disk
+interest to us are a block-addressable disk, mimicking a CMR disk, a zoned disk
 with an append-only interface similar to host-managed SMR, and a zoned disk
 with a block-addressable indirection layer, similar to drive-managed SMR (The
 fourth disk, which models drive tracks, was intended to reason about
-corruptiong adjacent singled tracks on write operations, but proved not to be
-useful and so is considered vestigal for the moment.)
+corruption adjacent singled tracks on write operations, but proved not to be
+useful and so is considered vestigial for the moment.)
 
 We make no claims that our drive-managed disk's indirection layer is novel or
 even remotely desirable.  Actual SMR indirection systems involve layers of
@@ -107,7 +107,7 @@ invariant writing.  At all times, one SMR zone is sacrificed as a "buffer" zone;
 on a random write to some LBA, an indirection system computes the actual PBA
 and zone offset, and faults _the entire PBA's zone_ to the buffer zone with the
 destructive update applied.  After all blocks are copied, the PBA's former zone
-becomes the new buffer zone.  As a result, only `(n-1)/n` blocks are actually 
+becomes the new buffer zone.  As a result, only `(n-1)/n` blocks are actually
 usable by application code.  Despite terrible write amplification, inductive
 invariants for this drive are straightforward to express.
 
@@ -131,9 +131,9 @@ invariants for this drive are straightforward to express.
  target zone over to the buffer zone.
 ```
 
-### Modeling a drive with SMRT
+### Modelling a drive with SMRT
 
-We take a "domain-first" approach to modeling in SMRT.  A disk model called `D`
+We take a "domain-first" approach to modelling in SMRT.  A disk model called `D`
 is comprised of up to three state datatypes:
 
 - `D.Constants`: immutable attributes of the drive. Examples of Constant data
@@ -141,7 +141,7 @@ is comprised of up to three state datatypes:
   each zone in a zoned disk.
 
 - `D.Persistant`: generally refers to durable data stored on the disk itself:
-  this could be random-accessable block data, append-only zones, or perhaps
+  this could be random-accessible block data, append-only zones, or perhaps
   some combination of the two.
 
 - `D.Volatile`: attributes of the drive that are ephemeral, such as
@@ -154,7 +154,7 @@ block-addressable disk has no volatile state to keep track of, and for
 simplicity our SMR drive only stores its indirection mapping on disk.  To
 simplify the presentation and to align with the interface currently
 implemented, we will refer to a `State` value as either a composition of
-`Persistant` as well as a `Volatile` value, or simply the former if no volatile
+`Persistent` as well as a `Volatile` value, or simply the former if no volatile
 state is defined on the disk.
 
 For each of the drives currently implemented in SMRT, we have some variation on
@@ -172,7 +172,7 @@ datatype Step =
 datatype Constants = Constants(n_blocks: int)
 datatype State = State(blocks: seq<Block.State>)
 
-Figure 1: Modeling datatypes for a block-addressable storage device.
+Figure 1: Modelling datatypes for a block-addressable storage device.
 ```
 
 Each possible `Step` is operated on via a relation between `State`s.  Per
@@ -223,7 +223,7 @@ statements in the lemmas' bodies!
 
 ```
     /* Given drive constants, give us the state of a fresh drive. */
-    function method Init(c: Constants) : State 
+    function method Init(c: Constants) : State
         requires ConstantsValid(c)
         ensures Valid(c, Init(c))
 
@@ -236,7 +236,7 @@ statements in the lemmas' bodies!
     }
 
     /* A disk must begin in a valid state. */
-    lemma InitImpliesValid(c: Constants) 
+    lemma InitImpliesValid(c: Constants)
         requires ConstantsValid(c)
         ensures Valid(c, Init(c))
 
@@ -300,7 +300,7 @@ the abstract model with the same effects.
         requires C.Valid(c, s)
         requires 0 <= lba as int < c.zd.n_blocks as int
         requires A.Block.Valid(val)
-        ensures forall i :: 0 <= i < |ReadOps(c, s, lba, val)| ==> 
+        ensures forall i :: 0 <= i < |ReadOps(c, s, lba, val)| ==>
             ValidStep(R.IC(c), ReadOps(c, s, lba, val)[i])
     {
         var lzone :| ZonedDisk.resolve_lba(c.zd, lba, lzone); // 1) Find which logical zone the LBA refers to...
@@ -309,8 +309,8 @@ the abstract model with the same effects.
         [A.ReadBlock(pzone + off, val)]                       // 2) In this case, one read is sufficient.
     }
 
-Figure 5: Implementation of a step relation (simplified): here, a read operation is a one-to-one relation; 
-a write operation involves a full zone copy, comprising many block writes, and thus would return a sequence of 
+Figure 5: Implementation of a step relation (simplified): here, a read operation is a one-to-one relation;
+a write operation involves a full zone copy, comprising many block writes, and thus would return a sequence of
 length greater than one.  
 ```
 
@@ -323,14 +323,14 @@ correctness": introducing the refinement functions `I()` and `IC()` into these
 simulations' lemmas induces Dafny verification timeouts, even if their use is
 not more involved than in the injective simple forward simulation case.
 
-## Towards "trait-forward" modeling
+## Towards "trait-forward" modelling
 
 SMRT's drive models differ from other work in that we do not encode internal,
 invisible mechanisms like operation reordering and other forms of asynchrony
 directly in the model, nor externalities like crashes. This is by design; as
 discussed in the refinement subsection, SMRT is an exercise in trait-like
 _compositional modeling_, which we attempt to maintain external concerns as
-distinct from the core disk models.  In so doing, modelers can fault in
+distinct from the core disk models.  In so doing, modellers can fault in
 independent concerns by "mixing in" additional actions external to the model
 itself, even ones imagined after the initial disk implementation.  Drawing from
 the economic meaning of the word, we refer to such concerns as _externalities_.
@@ -338,7 +338,7 @@ Previous work like Yggdrasil [@Yggdrasil] models disks inherently as an
 asynchronous, crashable "concept", by contrast.  We took this opportunity
 to explore an alternate approach.
 
-Externality modeling in SMRT extends the space of possible steps that the
+Externality modelling in SMRT extends the space of possible steps that the
 system can take.  For instance, in-progress work on crash refinement
 non-deterministically weaves in crash steps into an operations sequence.  An
 asynchronous refinement module could perhaps permute such a sequence.
@@ -350,20 +350,20 @@ asynchronous refinement module could perhaps permute such a sequence.
 
     function Weave(s: seq<A.Step>): seq<Step>
     {
-        if |s| == 0 then [] else 
+        if |s| == 0 then [] else
             var cstr :| 0 <= cstr <= 1;
-            if cstr == 0 then [IOStep(s[0])] + Weave(s[1..]) 
+            if cstr == 0 then [IOStep(s[0])] + Weave(s[1..])
                          else [CrashStep]
     }
 
-Figure 6: Extending a sequence of disk operations by inserting crash steps in arbitrary points.  Notice 
+Figure 6: Extending a sequence of disk operations by inserting crash steps in arbitrary points.  Notice
 that a crash step drops all subsequent disk operations, preventing the operation from fully completing.
 ```
 
-Trait-forward modeling was not a total success here thus far.  In particular,
+Trait-forward modelling was not a total success here thus far.  In particular,
 the inherent indirection between concerns seemed to trip Dafny's resolver up,
 leading almost immediately to verification timeouts that obstructed feature
-work.  Whether verification times exploding is inherhent in this style of Dafny
+work.  Whether verification times exploding is inherent in this style of Dafny
 programming or simply a matter of operator error is still yet to be determined.
 Also, arguably, separating ephemeral from durable state is a layering violation
 if we also expect crash refinement to be separate from the model, so there is
@@ -390,4 +390,3 @@ programmable translation layer remains a fantasy, this work -- particularly
 with a performance analysis bent -- could form the basis of an interpretable
 hardware layer to build SMR-optimised code like a database storage engine or
 file system atop.
-
